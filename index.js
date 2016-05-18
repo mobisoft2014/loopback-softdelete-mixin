@@ -4,6 +4,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
+
 var _util = require('util');
 
 var _softDelete = require('./soft-delete');
