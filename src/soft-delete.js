@@ -1,10 +1,14 @@
 import _debug from './debug';
 const debug = _debug();
 
-export default (Model, { deletedAt = 'deletedAt', _isDeleted = '_isDeleted', scrub = false }) => {
+export default (Model, {
+  deletedAt = 'deletedAt', _isDeleted = '_isDeleted', scrub = false
+}) => {
   debug('SoftDelete mixin for Model %s', Model.modelName);
 
-  debug('options', { deletedAt, _isDeleted, scrub });
+  debug('options', {
+    deletedAt, _isDeleted, scrub
+  });
 
   const properties = Model.definition.properties;
 
@@ -15,14 +19,35 @@ export default (Model, { deletedAt = 'deletedAt', _isDeleted = '_isDeleted', scr
       propertiesToScrub = Object.keys(properties)
         .filter(prop => !properties[prop].id && prop !== _isDeleted);
     }
-    scrubbed = propertiesToScrub.reduce((obj, prop) => ({ ...obj, [prop]: null }), {});
+    scrubbed = propertiesToScrub.reduce((obj, prop) => ({...obj, [prop]: null
+    }), {});
   }
 
-  Model.defineProperty(deletedAt, {type: Date, required: false});
-  Model.defineProperty(_isDeleted, {type: Boolean, required: true, default: false});
+  Model.defineProperty(deletedAt, {
+    type: Date,
+    required: false
+  });
+  Model.defineProperty(_isDeleted, {
+    type: Boolean,
+    required: true,
+    default: false
+  });
 
-  Model.destroyAll = function softDestroyAll(where, cb) {
-    return Model.updateAll(where, { ...scrubbed, [deletedAt]: new Date(), [_isDeleted]: true })
+  Model.destroyAll = function softDestroyAll(where, options, cb) {
+    if (options === undefined && cb === undefined) {
+      if (typeof where === 'function') {
+        cb = where;
+        where = {};
+      }
+    } else if (cb === undefined) {
+      if (typeof options === 'function') {
+        cb = options;
+        options = {};
+      }
+    }
+
+    return Model.updateAll(where, {...scrubbed, [deletedAt]: new Date(), [_isDeleted]: true
+      })
       .then(result => (typeof cb === 'function') ? cb(null, result) : result)
       .catch(error => (typeof cb === 'function') ? cb(error) : Promise.reject(error));
   };
@@ -31,7 +56,10 @@ export default (Model, { deletedAt = 'deletedAt', _isDeleted = '_isDeleted', scr
   Model.deleteAll = Model.destroyAll;
 
   Model.destroyById = function softDestroyById(id, cb) {
-    return Model.updateAll({ id: id }, { ...scrubbed, [deletedAt]: new Date(), [_isDeleted]: true })
+    return Model.updateAll({
+        id: id
+      }, {...scrubbed, [deletedAt]: new Date(), [_isDeleted]: true
+      })
       .then(result => (typeof cb === 'function') ? cb(null, result) : result)
       .catch(error => (typeof cb === 'function') ? cb(error) : Promise.reject(error));
   };
@@ -42,7 +70,8 @@ export default (Model, { deletedAt = 'deletedAt', _isDeleted = '_isDeleted', scr
   Model.prototype.destroy = function softDestroy(options, cb) {
     const callback = (cb === undefined && typeof options === 'function') ? options : cb;
 
-    return this.updateAttributes({ ...scrubbed, [deletedAt]: new Date(), [_isDeleted]: true })
+    return this.updateAttributes({...scrubbed, [deletedAt]: new Date(), [_isDeleted]: true
+      })
       .then(result => (typeof cb === 'function') ? callback(null, result) : result)
       .catch(error => (typeof cb === 'function') ? callback(error) : Promise.reject(error));
   };
@@ -51,7 +80,9 @@ export default (Model, { deletedAt = 'deletedAt', _isDeleted = '_isDeleted', scr
   Model.prototype.delete = Model.prototype.destroy;
 
   // Emulate default scope but with more flexibility.
-  const queryNonDeleted = {_isDeleted: false};
+  const queryNonDeleted = {
+    _isDeleted: false
+  };
 
   const _findOrCreate = Model.findOrCreate;
   Model.findOrCreate = function findOrCreateDeleted(query = {}, ...rest) {
@@ -59,7 +90,9 @@ export default (Model, { deletedAt = 'deletedAt', _isDeleted = '_isDeleted', scr
       if (!query.where) {
         query.where = queryNonDeleted;
       } else {
-        query.where = { and: [ query.where, queryNonDeleted ] };
+        query.where = {
+          and: [query.where, queryNonDeleted]
+        };
       }
     }
 
@@ -72,7 +105,9 @@ export default (Model, { deletedAt = 'deletedAt', _isDeleted = '_isDeleted', scr
       if (!query.where) {
         query.where = queryNonDeleted;
       } else {
-        query.where = { and: [ query.where, queryNonDeleted ] };
+        query.where = {
+          and: [query.where, queryNonDeleted]
+        };
       }
     }
 
@@ -82,14 +117,18 @@ export default (Model, { deletedAt = 'deletedAt', _isDeleted = '_isDeleted', scr
   const _count = Model.count;
   Model.count = function countDeleted(where = {}, ...rest) {
     // Because count only receives a 'where', there's nowhere to ask for the deleted entities.
-    const whereNotDeleted = { and: [ where, queryNonDeleted ] };
+    const whereNotDeleted = {
+      and: [where, queryNonDeleted]
+    };
     return _count.call(Model, whereNotDeleted, ...rest);
   };
 
   const _update = Model.update;
   Model.update = Model.updateAll = function updateDeleted(where = {}, ...rest) {
     // Because update/updateAll only receives a 'where', there's nowhere to ask for the deleted entities.
-    const whereNotDeleted = { and: [ where, queryNonDeleted ] };
+    const whereNotDeleted = {
+      and: [where, queryNonDeleted]
+    };
     return _update.call(Model, whereNotDeleted, ...rest);
   };
 };
